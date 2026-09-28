@@ -1,16 +1,41 @@
-# Local Horizontal Velocity Process （LHVS）
+# LHVS
 
-Local optical and SAR feature tracking and temporal compositing of Antarctic ice velocity.
+English | [简体中文](README_zh-CN.md)
 
-This repository contains research workflows developed for the Cook Ice Shelf study, *Oceanic and Bathymetric Controls on the Kinematic Evolution and Structural Destabilization of Cook Ice Shelf*. The code estimates image-pair velocity fields with autoRIFT and builds quality-controlled velocity composites from compatible raster products.
+Local horizontal ice velocity mapping and temporal compositing from optical and SAR satellite imagery.
 
-The repository covers **ice-velocity processing**, not the complete manuscript analysis. Grounding-line mapping, rift delineation, ocean reanalysis, sea-ice analysis, and CTD processing are not included in the current directory.
+LHVS provides Python workflows for deriving glacier and ice-shelf velocity fields from locally stored satellite images and combining image-pair measurements into temporal composites. It brings together autoRIFT feature tracking, configurable geospatial processing, outlier filtering, and uncertainty-weighted averaging for studies of ice motion and its variability.
 
-## 1. Repository structure
+The project includes optical tracking with Landsat and Sentinel-2, SAR tracking with Sentinel-1 and NISAR, and a separate compositing module for compatible velocity rasters. Users can process individual image pairs, select pairs for batch processing, and produce monthly, seasonal, annual, or fixed-window velocity maps.
+
+LHVS was developed for Cook Ice Shelf research in East Antarctica. Its workflows can be adapted to other glacier and ice-shelf study areas by configuring the imagery, DEM, matching parameters, and analysis domain. Temporal-compositing defaults use Antarctic Polar Stereographic coordinates (EPSG:3031) and Antarctic seasons.
+
+## Features
+
+- **Local image processing:** work with downloaded imagery and user-provided auxiliary data.
+- **Optical and SAR workflows:** derive velocity fields from Landsat, Sentinel-2, Sentinel-1, and NISAR products.
+- **Configurable tracking:** define DEM coverage, prior velocities, search ranges, matching-window sizes, and output settings.
+- **Batch processing:** select image pairs using temporal baselines, dates, and sensor-specific criteria.
+- **Quality control:** apply spatial and temporal outlier filters before compositing.
+- **Temporal composites:** combine velocity measurements with inverse-variance weighting and export uncertainty estimates.
+- **Geospatial outputs:** generate GeoTIFF velocity maps, optional tracking NetCDFs, CSV summaries, and quick-look figures.
+
+## Workflow
+
+| Module | Input | Processing | Output |
+| --- | --- | --- | --- |
+| Optical tracking | Landsat or Sentinel-2 band images and a DEM | Preprocessing, GeogridOptical, and autoRIFT matching | Image-pair velocity GeoTIFFs and optional NetCDFs |
+| SAR tracking | Sentinel-1 SLC ZIP or NISAR RSLC/GSLC HDF5 products and a DEM | Coregistration or overlap preparation, amplitude extraction, Geogrid, and autoRIFT matching | Image-pair velocity GeoTIFFs and optional NetCDFs |
+| Temporal compositing | Single-band velocity rasters in supported ITS_LIVE or GAMMA naming conventions | Common-grid processing, quality control, and uncertainty-weighted averaging | Temporal velocity composites, uncertainty maps, summaries, and figures |
+
+The modules can be run independently. To composite local tracking results, first export their three-band GeoTIFFs into a supported single-band layout, as described in [Temporal velocity composites](#temporal-velocity-composites).
+
+## Repository structure
 
 ```text
 .
 ├── README.md
+├── README_zh-CN.md
 ├── 1_autoRIFT_Local_Pipeline_Optical/
 │   ├── run_pipeline.py                 # Process one optical image pair
 │   ├── batch_run.py                    # Select and process multiple pairs
@@ -26,7 +51,7 @@ The repository covers **ice-velocity processing**, not the complete manuscript a
 │   ├── generate_parameter_pack.py      # Prepare DEM/SPS inputs without tracking
 │   ├── config.yaml                     # Sentinel-1 configuration
 │   ├── config_nisar.yaml               # NISAR configuration
-│   ├── NISAR_MODULE_README.md           # Historical implementation notes
+│   ├── NISAR_MODULE_README.md           # NISAR implementation notes
 │   └── src/
 │       ├── s1_processor.py
 │       ├── nisar_processor.py
@@ -48,19 +73,11 @@ The repository covers **ice-velocity processing**, not the complete manuscript a
     └── visualize.py
 ```
 
-Directory names are preserved as supplied, including `pipline` in the compositing directory. Each workflow is a separate script collection. Run commands from the relevant directory; the two tracking workflows both contain a package named `src` and should not be imported together as one package.
+Run commands from the directory of the module you want to use. The optical and SAR modules each contain a package named `src`; keep their execution environments and import paths separate.
 
-| Workflow | Inputs | Main operations | Outputs |
-| --- | --- | --- | --- |
-| Optical tracking | Local Landsat or Sentinel-2 band images, a DEM, optional spatial parameter rasters | Sensor-dependent preprocessing, GeogridOptical, autoRIFT matching | Three-band velocity GeoTIFF; optional NetCDF and offset GeoTIFF |
-| SAR tracking | Sentinel-1 SLC ZIP archives or NISAR RSLC/GSLC HDF5 products, a DEM | Coregistration or overlap preparation, amplitude extraction, Geogrid, autoRIFT matching | Three-band velocity GeoTIFF; optional NetCDF and offset GeoTIFF |
-| Temporal compositing | Separate single-band velocity rasters in the supported ITS_LIVE or GAMMA naming conventions | Common-grid reprojection, outlier filtering, uncertainty-weighted averaging | Monthly, seasonal, annual, full-record, or fixed-window composites; CSV summaries and optional PNG plots |
+## Installation
 
-**The tracking outputs are not ingested directly by the compositing module.** They must first be exported into a supported single-band layout. See Section 5.
-
-## 2. Dependencies and environment
-
-The scripts rely on external scientific and geospatial software. The autoRIFT, Geogrid, coregistration tools, satellite imagery, DEM, orbit files, and spatial parameter datasets are not bundled here.
+LHVS uses Python scientific and geospatial libraries together with external image-tracking and coregistration software. Prepare the dependencies for the modules you intend to run; temporal compositing can be used without installing the full tracking stack.
 
 | Component | Required software |
 | --- | --- |
@@ -70,13 +87,13 @@ The scripts rely on external scientific and geospatial software. The autoRIFT, G
 | NetCDF export | `xarray` and `netCDF4` |
 | Temporal compositing | NumPy, pandas, rasterio, SciPy, pyproj, Shapely, and Matplotlib |
 
-A Python 3.10+ environment is a practical starting point; select a version compatible with the upstream binary dependencies. No pinned environment or complete installation recipe is supplied with this code snapshot. Linux or WSL is a practical choice for the SAR stack; native Windows processing has not been validated here.
+A Python 3.10+ environment is a practical starting point. For tracking, choose a Python version supported by the required geospatial and SAR dependencies. Linux or WSL is recommended for working with the SAR software stack.
 
-For the **compositing module only**, an example environment is:
+To create an environment for **temporal compositing**:
 
 ```bash
-conda create -n cis-velocity -c conda-forge python=3.11 numpy pandas rasterio scipy pyproj shapely matplotlib
-conda activate cis-velocity
+conda create -n lhvs -c conda-forge python=3.11 numpy pandas rasterio scipy pyproj shapely matplotlib
+conda activate lhvs
 ```
 
 For image tracking, follow the upstream installation instructions and use mutually compatible versions:
@@ -86,9 +103,21 @@ For image tracking, follow the upstream installation instructions and use mutual
 - [COMPASS](https://github.com/opera-adt/COMPASS)
 - [ISCE3](https://github.com/isce-framework/isce3)
 
-These local workflows use upstream implementation interfaces, including `hyp3_autorift.vend.testGeogrid` and some autoRIFT preprocessing functions. Installing the latest version of every dependency does not guarantee compatibility. Record the versions used for a successful run.
+The tracking modules use interfaces from these packages, including `hyp3_autorift.vend.testGeogrid`. Check API compatibility when selecting versions and retain the environment information for reproducible processing.
 
-## 3. Optical image-pair tracking
+## Getting started
+
+Choose the workflow that matches your data:
+
+- **Optical band images:** start with [Optical image-pair tracking](#optical-image-pair-tracking).
+- **Sentinel-1 or NISAR products:** start with [Sentinel-1 and NISAR tracking](#sentinel-1-and-nisar-tracking).
+- **Existing velocity rasters:** start with [Temporal velocity composites](#temporal-velocity-composites).
+
+For image tracking, provide local satellite products and a projected DEM covering the study area. A stable-surface mask and spatially varying prior-velocity or matching-parameter rasters can also be supplied. Sentinel-1 processing requires suitable orbit information. Download and prepare these datasets separately from the code.
+
+The commands below use example paths. Replace them with your own data and output locations, and adjust the study-area bounds and processing parameters before running.
+
+## Optical image-pair tracking
 
 The main processing path recognizes Landsat 4/5/7/8/9 and Sentinel-2 filenames. Typical default bands are Landsat 7/8/9 B8, Landsat 4/5 B2, and Sentinel-2 B08. Other bands can be selected explicitly in batch processing.
 
@@ -132,11 +161,11 @@ Inspect the pair list, then remove `--dry-run` to process it. For Sentinel-2, us
 
 The optical `--interval` specifies a **maximum baseline**, not an exact repeat interval. The script selects eligible pairs within that limit, subject to `--min-days`, overlap, date, and sensor filters. This pair selection does not perform an SBAS displacement inversion.
 
-In the current optical batch implementation, `--output-dir` controls configuration placement and completion checks, but does not override `processing.base_results_dir`. Set both to the same **absolute path**. The batch CLI does not forward `--keep-intermediates`; run an individual generated pair configuration manually with that flag when retaining diagnostics is necessary.
+For optical batch processing, set `processing.base_results_dir` and `--output-dir` to the same **absolute path**: configuration placement and completion checks use `--output-dir`, while the tracking runner uses `base_results_dir`. To retain diagnostics, run an individual generated pair configuration with `--keep-intermediates`; the optical batch CLI does not forward this flag.
 
-The batch parser also exposes `planetscope` and `custom` discovery options. These are not equivalent to validated end-to-end sensor support: the downstream filename/date and metadata logic remains Landsat/Sentinel-2 oriented.
+Use Landsat or Sentinel-2 for the documented optical workflow. The additional `planetscope` and `custom` batch-discovery options require compatible downstream filename, date, and metadata handling.
 
-## 4. Sentinel-1 and NISAR tracking
+## Sentinel-1 and NISAR tracking
 
 Return to the repository root and enter the SAR directory:
 
@@ -212,7 +241,7 @@ The tracking GeoTIFF NoData value is `-32767`. Projected x/y components are not 
 
 Optional `offset_<pair_name>.tif` contains four bands: `DX_px`, `DY_px`, `InterpMask`, and `ChipSizeX`. Optional NetCDF files contain velocity fields, coordinates, projection information, matching diagnostics, and pair-level error attributes (`vx_error`, `vy_error`, `v_error`). These errors are stable-surface statistics, not spatially varying error rasters. They may be unavailable when too few valid stable pixels exist; providing a prior velocity field enables residual-based estimation on the stable mask.
 
-## 5. Temporal velocity composites
+## Temporal velocity composites
 
 ### Accepted input layouts
 
@@ -257,7 +286,7 @@ For local velocity triplets only:
 python run_pipeline.py --gamma-dir /path/to/velocity_triplets --no-itslive --output-dir /path/to/composites --bbox-latlon 150.0 -69.0 154.0 -67.0 --resolution 120 --modes monthly seasonal yearly --no-iqr-filter
 ```
 
-The bounding box is an illustrative Cook-area example, not a prescribed analysis domain. Check it against your actual ice-shelf and raster coverage. Exactly one bounding-box option is required: `--bbox-latlon LON_MIN LAT_MIN LON_MAX LAT_MAX` or `--bbox-3031 X_MIN Y_MIN X_MAX Y_MAX`.
+The example bounding box covers a Cook-area domain. Replace it with bounds appropriate to your imagery and study area. Exactly one bounding-box option is required: `--bbox-latlon LON_MIN LAT_MIN LON_MAX LAT_MAX` or `--bbox-3031 X_MIN Y_MIN X_MAX Y_MAX`.
 
 For both supported data sources:
 
@@ -331,31 +360,34 @@ composites/
 
 Other temporal modes have the same layout. Composite rasters are single-band Float32 GeoTIFFs with NaN NoData. Velocities and uncertainties are in m yr⁻¹; `neff` is dimensionless and is saved from the direct-speed weights. Use `--no-plots` or `--no-neff` to disable optional outputs.
 
-## 6. Reproducibility and current limitations
+## Processing guidance
 
-- Replace the machine-specific paths in every configuration. Neither imagery nor auxiliary rasters are supplied.
-- Use dedicated per-pair output directories because tracking cleanup removes intermediate files and subdirectories.
-- Date-based pair names alone do not distinguish multiple footprints or sensor combinations acquired on the same dates. Separate batch runs/output roots when necessary to avoid collisions or erroneous completion skips.
-- The compositing reader treats zero-valued pixels as missing data by default (`PipelineConfig.no_data_value = 0.0`), even when a raster has a separate NoData value. Review this setting if genuine zero velocities or components matter.
-- Uncertainty-weighted multi-record means require finite, nonzero uncertainties. Missing stable-surface errors and spatial-variability-based estimates should be inspected before use; the uncertainty formula does not account for correlated image pairs.
-- NISAR template speed limits, optical chip sizes, search ranges, and filtering thresholds are examples, not universal glacier settings. In particular, check speed limits before applying a template to fast-flowing ice.
-- Some module-level documentation predates the current code. The root README describes the interfaces inspected in this snapshot; consult the source and CLI help when adapting workflows.
-- All 27 Python files were syntax-parsed and the compositing CLI help was checked during README preparation. End-to-end satellite processing was not run in that check: the inspection environment lacks the required geospatial/SAR dependencies and inputs. This is not a validated, version-locked reproduction package.
+Select tracking and filtering parameters for the motion, texture, and data coverage of your study area. In particular, review speed limits before applying a configuration to fast-flowing ice, and interpret matching-window size separately from output grid spacing.
 
-For reproducible research, preserve acquisition IDs, orbit and DEM provenance, configuration files, software versions, accepted pair inventories, filter settings, and processing logs. Match these to the manuscript methods and archived data products.
+For reliable and reproducible processing:
 
-## 7. Citation and attribution
+- Use dedicated per-pair output directories and retain intermediate files when inspecting results.
+- Separate batch runs for different footprints or sensor combinations sharing acquisition dates, because date-based pair names alone do not distinguish them.
+- Review the compositing NoData setting if genuine zero velocities or components matter: `PipelineConfig.no_data_value` defaults to `0.0`.
+- Inspect estimated uncertainties before weighting records. Multi-record weighted averages require finite, nonzero uncertainties, and their formal uncertainty does not include correlations between image pairs.
+- Preserve acquisition IDs, auxiliary-data provenance, software versions, configurations, pair inventories, and processing logs alongside the outputs.
 
-When using this repository, cite the associated Cook Ice Shelf manuscript once bibliographic details are available, and the software and data sources actually used. The manuscript title is given above; no publication DOI or code-archive DOI is assigned in this README.
+## Contributing and support
 
-For autoRIFT, the upstream repository identifies the following reference:
+Questions, bug reports, and workflow improvements can be shared through the repository's GitHub issues and pull requests. For processing issues, include the module and sensor used, product type, software versions, relevant configuration settings, and a minimal example or error log. Remove private paths, credentials, and sensitive data before sharing.
+
+Useful contributions include additional data readers, sensor-aware metadata handling, runnable examples, environment specifications, and tests for tracking and compositing workflows.
+
+## Research context and citation
+
+LHVS supports the satellite velocity analysis associated with *Oceanic and Bathymetric Controls on the Kinematic Evolution and Structural Destabilization of Cook Ice Shelf*. When using the project in research, acknowledge LHVS and cite the software and datasets contributing to your analysis. Use the associated manuscript's bibliographic details when available.
+
+For the autoRIFT tracking method, cite:
 
 Lei, Y., Gardner, A.S., Agram, P., 2021. Autonomous Repeat Image Feature Tracking (autoRIFT) and Its Application for Tracking Ice Displacement. *Remote Sensing* 13, 749. [https://doi.org/10.3390/rs13040749](https://doi.org/10.3390/rs13040749).
 
-This repository provides local workflows around upstream software; it does not claim authorship of autoRIFT, Geogrid, COMPASS, ISCE3, or HyP3. Retain the applicable upstream attribution and notices for any adapted code.
+LHVS builds on autoRIFT, Geogrid, COMPASS, ISCE3, and HyP3. Their development teams retain credit for the underlying methods and software. Follow the applicable upstream citation guidance and retain attribution notices for adapted code.
 
-## 8. License and release preparation
+## License
 
-No project-level license is included in the supplied directory. Add an appropriate license after reviewing authorship and any incorporated upstream code; dependency licenses remain separate. No license is selected by this README.
-
-Before the public GitHub release, exclude `__pycache__/`, compiled `.pyc` files, private configuration paths, credentials, and generated data or processing outputs. Add a pinned environment, a small runnable example, and a `CITATION.cff` file when author, release, and archive metadata are finalized.
+A project-level license has not yet been declared. Upstream software and datasets remain subject to their respective licenses and usage conditions.
