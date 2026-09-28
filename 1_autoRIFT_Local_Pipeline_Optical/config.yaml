@@ -1,0 +1,72 @@
+# ============================================================
+#  autoRIFT_Optical_Local_Pipeline — 用户配置文件
+#  支持平台：S2 / L9 / L8 / L7 / L5 / L4
+# ============================================================
+
+# ── 输入数据 ─────────────────────────────────────────────────
+input:
+  # 直接提供本地波段文件路径（推荐）
+  # S2:    B08.jp2 (NIR 10m)
+  # L8/L9: B8.TIF  (全色 15m)
+  # L7:    B8.TIF  (全色 15m，SLC-off 需特殊处理)
+  # L4/L5: B2.TIF  (绿波段)
+  reference_path: "/data1/PhD_Work1/autoRIFT_S1_Local_Pipeline-v5/Landsat/LC08_L2SR_077108_20241014_20241021_02_T2_SR_B5.TIF"
+  secondary_path: "/data1/PhD_Work1/autoRIFT_S1_Local_Pipeline-v5/Landsat/LC08_L2SR_077108_20241201_20241209_02_T2_SR_B5.TIF"
+
+  # 平台标识（影响预处理滤波策略与速度转换）
+  # 可选值: S2 | L9 | L8 | L7 | L5 | L4
+  # null = 自动从文件名解析
+  platform: null
+
+  # 场景名称（用于命名输出文件和 NetCDF 元数据）
+  # null = 自动从文件路径提取
+  reference_scene: null
+  secondary_scene: null
+
+  dem_file: "/data1/PhD_Work1/aws3_tif/dem_120m_clip.tif"
+  ssm_file: "/data1/PhD_Work1/aws3_tif/SPS_0120m_StableSurface.tif"
+
+# ── 处理参数 ─────────────────────────────────────────────────
+processing:
+  base_results_dir: "results"
+  epsg: null          # null = 自动从 DEM 读取（南极建议 3031）
+  
+
+  # ── Chip size（单位：m，对应 GeogridOptical.chipSizeX0）────────
+  # 光学默认基础值 240m（官方 GeogridOptical 默认值）
+  # min:max 建议 1:4，满足 autoRIFT ChipSize0 倍数约束
+  chip_size_min_m:   null #240
+  chip_size_max_m:   null #960
+
+  # ── 搜索范围（m/yr）─────────────────────────────────────────
+  # 南极最快区域（Smith/Thwaites）约 10000 m/yr，保守取 15000
+  search_range_m_yr: 3000
+
+  # ── autoRIFT 参数 ───────────────────────────────────────────
+  # 光学模式 OverSampleRatio 低于 SAR（官方：16/32/64/64）
+  oversample_ratio:  64
+  n_threads:         20
+
+  # ── 速度后处理 ──────────────────────────────────────────────
+  velocity_max_m_yr: 3000
+
+  # ── 输出控制 ────────────────────────────────────────────────
+  save_offsets:  true
+  output_netcdf: true
+  pair_name:     null   # null = 自动由日期生成
+
+# ── SPS 空间参数文件（可选，南极覆盖 EPSG:3031 120m）──────────────
+# 覆盖整个南极的空间变化参数栅格。提供则自动重采样到 DEM 格网替代均匀值。
+# 全部 null → 使用 processing 中均匀值（回退模式）。
+sps_params:
+  sps_params:
+  dhdx_file:            null
+  dhdy_file:            null
+  vx0_file:             /data1/PhD_Work1/aws3_tif/SPS_0120m_vx0.tif
+  vy0_file:             /data1/PhD_Work1/aws3_tif/SPS_0120m_vy0.tif
+  search_range_x_file:  /data1/PhD_Work1/aws3_tif/SPS_0120m_vxSearchRange.tif
+  search_range_y_file:  /data1/PhD_Work1/aws3_tif/SPS_0120m_vySearchRange.tif
+  chip_size_min_x_file: /data1/PhD_Work1/aws3_tif/SPS_0120m_xMinChipSize.tif
+  chip_size_min_y_file: /data1/PhD_Work1/aws3_tif/SPS_0120m_yMinChipSize.tif
+  chip_size_max_x_file: /data1/PhD_Work1/aws3_tif/SPS_0120m_xMaxChipSize.tif  # ← v5 修正
+  chip_size_max_y_file: /data1/PhD_Work1/aws3_tif/SPS_0120m_yMaxChipSize.tif  # ← v5 修正

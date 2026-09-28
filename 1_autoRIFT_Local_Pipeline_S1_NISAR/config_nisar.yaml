@@ -1,0 +1,88 @@
+# ============================================================
+#  autoRIFT_SAR_Local_Pipeline v4 — NISAR 配置文件模板
+# ============================================================
+# 用法：
+#   python run_pipeline.py --config config_nisar.yaml
+#
+# 传感器自动检测：存在 input.reference_h5 字段 → NISAR 模式
+#                 存在 input.reference_zip 字段 → S1 模式（向后兼容）
+# ============================================================
+
+# ── 输入数据 ─────────────────────────────────────────────────
+input:
+  # NISAR HDF5 文件（本地路径，支持 RSLC 和 GSLC）
+  reference_h5: "/home/junjie/Downloads/Qilinhu/RSLC/NISAR_L1_PR_RSLC_023_084_A_141_4005_SHSH_A_20260620T013158_20260620T013232_P05023_N_F_J_001.h5"
+  secondary_h5: "/home/junjie/Downloads/Qilinhu/RSLC/NISAR_L1_PR_RSLC_024_084_A_141_4005_SHSH_A_20260702T013158_20260702T013231_P05023_N_F_J_001.h5"
+  # DEM（本地路径；若目标是 30 m 速度场，必须使用以米为单位的投影 DEM，
+  # 如本例 EPSG:3031。RSLC 协同配准使用，GSLC 仅用于 Geogrid。）
+  dem_file:     "/home/junjie/Downloads/Qilinhu/DEM/rasters_COP30/output_hh_3031.tif"
+  # 稳定地表掩膜（可选，null=跳过）
+  # ssm_file:     "/data1/PhD_Work1/aws3_tif/SPS_0120m_StableSurface.tif"
+  ssm_file: null
+
+# ── NISAR 专属参数 ────────────────────────────────────────────
+nisar:
+  frequency:    "A"        # 频段：'A'（默认，L波段）或 'B'
+  # polarization 由 nisar_processor.detect_polarization 自动检测（HH > VV）
+
+# ── 处理参数 ─────────────────────────────────────────────────
+processing:
+  base_results_dir: "NISAR"
+  working_dir:   "work/"
+  output_dir:    "output/"
+
+  epsg: null   # null = 自动检测
+               #   GSLC → 从幅度图地理坐标读取
+               #   RSLC → 从 DEM 读取
+
+  # ── 输出速度场分辨率 ─────────────────────────────────────
+  # null = 直接采用输入 DEM 像元大小；数值 = 仅为 Geogrid 重采样一个工作 DEM。
+  # 原始 30 m DEM 仍用于 NISAR RSLC 预处理/协同配准，不会被降采样。
+  # 30 m 最密、60 m 节点数约为 30 m 的 1/4，120 m 约为 1/16。
+  output_resolution_m: 90
+  reuse_geogrid_dem: true
+
+  # ── Chip size 参数 ─────────────────────────────────────────
+  # 这些是匹配窗口，不是输出分辨率。Geogrid 的基础 ChipSizeX0 固定为 240 m；
+  # DEM-only 模式允许 240, 480, 960, 1920 m（1/2/4/8 倍）。其他数值会向上
+  # 对齐到上述安全层级：例如随机的 60–600 m 自动规范为 240–960 m。
+  # 若设为 null 且提供完整 SPS chip tif，则使用 SPS；若没有 SPS，则自动回退 240–960 m。
+  chip_size_min_m:   240
+  chip_size_max_m:   1920
+
+  # ── 搜索范围 ──────────────────────────────────────────────
+  search_range_m_yr: 1000   # 最大预期速度（m/yr）
+
+  # ── autoRIFT 参数 ─────────────────────────────────────────
+  filter_type:       null  # HPS 高通滤波已在 nisar_processor 内完成；WAL 为额外滤波
+  filter_width:      null
+  oversample_ratio:  64
+  # autoRIFT 核心默认使用单核心实现；不要把该数值盲目设为 CPU 总核心数。
+  # 此项主要约束支持库线程，建议 4–8；速度优先通过 output_resolution_m 控制。
+  n_threads:         30
+
+  # ── 速度后处理 ────────────────────────────────────────────
+  velocity_max_m_yr: 1000
+
+  # ── 输出控制 ──────────────────────────────────────────────
+  save_offsets:   true
+  output_netcdf:  true     # NISAR 建议默认开启 NetCDF（含元数据 / 误差估计）
+  pair_name:      null     # null = 自动由日期生成
+
+# ── SPS 空间参数文件（可选，与 S1 模式完全相同接口）────────────
+sps_params:
+  dhdx_file:             /data1/PhD_Work1/aws3_tif/SPS_0120m_dhdx.tif
+  dhdy_file:             /data1/PhD_Work1/aws3_tif/SPS_0120m_dhdy.tif
+  vx0_file:              /data1/PhD_Work1/aws3_tif/SPS_0120m_vx0.tif   # SPS_0120m_vx0.tif
+  vy0_file:              /data1/PhD_Work1/aws3_tif/SPS_0120m_vy0.tif   # SPS_0120m_vy0.tif
+#  search_range_x_file:   /data1/PhD_Work1/aws3_tif/SPS_0120m_vxSearchRange.tif   # SPS_0120m_vxSearchRange.tif
+#  search_range_y_file:   /data1/PhD_Work1/aws3_tif/SPS_0120m_vySearchRange.tif   # SPS_0120m_vySearchRange.tif
+##  chip_size_min_x_file:  /data1/PhD_Work1/aws3_tif/SPS_0120m_xMinChipSize.tif   # SPS_0120m_xMinChipSize.tif
+#  chip_size_min_y_file:  /data1/PhD_Work1/aws3_tif/SPS_0120m_yMinChipSize.tif   # SPS_0120m_yMinChipSize.tif
+#  chip_size_max_x_file:  /data1/PhD_Work1/aws3_tif/SPS_0120m_xMaxChipSize.tif   # SPS_0120m_xMaxChipSize.tif
+#  chip_size_max_y_file:  /data1/PhD_Work1/aws3_tif/SPS_0120m_yMaxChipSize.tif   # SPS_0120m_yMaxChipSize.tif
+
+
+
+
+
