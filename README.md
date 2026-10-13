@@ -380,7 +380,7 @@ Useful contributions include additional data readers, sensor-aware metadata hand
 
 ## Research context and citation
 
-LHVS supports the satellite velocity analysis associated with *Oceanic and Bathymetric Controls on the Kinematic Evolution and Structural Destabilization of Cook Ice Shelf*. When using the project in research, acknowledge LHVS and cite the software and datasets contributing to your analysis. Use the associated manuscript's bibliographic details when available.
+LHVS supports the satellite velocity analysis associated with *Multi-mission satellite observations reveal rapid acceleration and structural weakening of Cook Ice Shelf, East Antarctica*. When using the project in research, acknowledge LHVS and cite the software and datasets contributing to your analysis. Use the associated manuscript's bibliographic details when available.
 
 For the autoRIFT tracking method, cite:
 
